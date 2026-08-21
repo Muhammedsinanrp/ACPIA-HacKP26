@@ -2,8 +2,10 @@ package com.example.acpia.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -13,12 +15,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.acpia.ui.modules.*
 import com.example.acpia.viewmodel.InvestigationViewModel
+import kotlinx.coroutines.launch
 
 data class NavItem(
     val key: String,
@@ -35,6 +39,12 @@ fun DashboardScreen(
     val selectedCase by viewModel.selectedCase.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
 
+    val configuration = LocalConfiguration.current
+    val isMobile = configuration.screenWidthDp < 600
+
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+
     val navItems = listOf(
         NavItem("overview", "Overview", Icons.Default.Dashboard),
         NavItem("cases", "Cases & FIRs", Icons.Default.FolderSpecial),
@@ -48,11 +58,10 @@ fun DashboardScreen(
         NavItem("settings", "Settings", Icons.Default.Settings)
     )
 
-    Row(modifier = Modifier.fillMaxSize()) {
-        // Sidebar Navigation
+    val navigationContent = @Composable {
         Column(
             modifier = Modifier
-                .width(260.dp)
+                .width(if (isMobile) 300.dp else 260.dp)
                 .fillMaxHeight()
                 .background(
                     Brush.verticalGradient(
@@ -103,11 +112,19 @@ fun DashboardScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             // Navigation Links
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
                 navItems.forEach { item ->
                     val isSelected = activeView == item.key
                     TextButton(
-                        onClick = { activeView = item.key },
+                        onClick = {
+                            activeView = item.key
+                            if (isMobile) {
+                                scope.launch { drawerState.close() }
+                            }
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(
@@ -158,85 +175,173 @@ fun DashboardScreen(
                 }
             }
         }
+    }
 
-        // Main Content Area
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.linearGradient(
-                        colors = listOf(Color(0xFFF4FAFF), Color(0xFFE9F4FC))
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            if (isMobile) {
+                navigationContent()
+            }
+        },
+        gesturesEnabled = isMobile
+    ) {
+        Row(modifier = Modifier.fillMaxSize()) {
+            // Sidebar Navigation (Desktop only)
+            if (!isMobile) {
+                navigationContent()
+            }
+
+            // Main Content Area
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(Color(0xFFF4FAFF), Color(0xFFE9F4FC))
+                        )
                     )
+                    .padding(if (isMobile) 12.dp else 20.dp)
+            ) {
+                // Header Bar
+                HeaderBar(
+                    isMobile = isMobile,
+                    selectedCase = selectedCase,
+                    activeViewLabel = navItems.find { it.key == activeView }?.label ?: "Investigation Command",
+                    searchQuery = searchQuery,
+                    onSearchQueryChange = { viewModel.setSearchQuery(it) },
+                    onLogout = onLogout,
+                    onMenuClick = {
+                        scope.launch { drawerState.open() }
+                    }
                 )
-                .padding(20.dp)
-        ) {
-            // Header Bar
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Module View Router
+                Box(modifier = Modifier.fillMaxSize()) {
+                    when (activeView) {
+                        "overview" -> OverviewModule(viewModel, onNavigateTo = { activeView = it })
+                        "cases" -> CasesModule(viewModel, onNavigateToEvidence = { activeView = "evidence" })
+                        "evidence" -> EvidenceModule(viewModel)
+                        "graph" -> EntityGraphModule(viewModel)
+                        "ai" -> AiAssistantModule(viewModel)
+                        "reports" -> ReportsModule(viewModel)
+                        "services" -> ServicesModule()
+                        "training" -> TrainingModule()
+                        "contact" -> ContactModule()
+                        "settings" -> SettingsModule()
+                        else -> OverviewModule(viewModel, onNavigateTo = { activeView = it })
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun HeaderBar(
+    isMobile: Boolean,
+    selectedCase: com.example.acpia.model.Case?,
+    activeViewLabel: String,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    onLogout: () -> Unit,
+    onMenuClick: () -> Unit
+) {
+    if (isMobile) {
+        Column(modifier = Modifier.fillMaxWidth()) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
-                    Text(
-                        "ACTIVE: ${selectedCase?.id ?: "ALL FILES"} · ${selectedCase?.firNumber ?: "Cyber Operations"}",
-                        fontSize = 10.sp,
-                        fontFamily = FontFamily.Monospace,
-                        letterSpacing = 1.sp,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        navItems.find { it.key == activeView }?.label ?: "Investigation Command",
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.ExtraBold
-                    )
-                }
-
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { viewModel.setSearchQuery(it) },
-                        placeholder = { Text("Search case, suspect, or hash...", fontSize = 12.sp) },
-                        leadingIcon = {
-                            Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
-                        },
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .width(280.dp)
-                            .height(48.dp)
-                            .padding(end = 12.dp)
-                    )
-
-                    Button(
-                        onClick = onLogout,
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                        modifier = Modifier.height(48.dp)
-                    ) {
-                        Icon(Icons.Default.Logout, contentDescription = null, modifier = Modifier.size(15.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Sign Out", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    IconButton(onClick = onMenuClick) {
+                        Icon(Icons.Default.Menu, contentDescription = "Menu")
+                    }
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Column {
+                        Text(
+                            activeViewLabel,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                        Text(
+                            "${selectedCase?.firNumber ?: "Cyber Operations"}",
+                            fontSize = 9.sp,
+                            fontFamily = FontFamily.Monospace,
+                            color = MaterialTheme.colorScheme.primary
+                        )
                     }
                 }
+
+                IconButton(onClick = onLogout) {
+                    Icon(Icons.Default.Logout, contentDescription = "Sign Out", tint = MaterialTheme.colorScheme.primary)
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = onSearchQueryChange,
+                placeholder = { Text("Search case, suspect, or hash...", fontSize = 12.sp) },
+                leadingIcon = {
+                    Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+            )
+        }
+    } else {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    "ACTIVE: ${selectedCase?.id ?: "ALL FILES"} · ${selectedCase?.firNumber ?: "Cyber Operations"}",
+                    fontSize = 10.sp,
+                    fontFamily = FontFamily.Monospace,
+                    letterSpacing = 1.sp,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    activeViewLabel,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.ExtraBold
+                )
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = onSearchQueryChange,
+                    placeholder = { Text("Search case, suspect, or hash...", fontSize = 12.sp) },
+                    leadingIcon = {
+                        Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .width(280.dp)
+                        .height(48.dp)
+                        .padding(end = 12.dp)
+                )
 
-            // Module View Router
-            Box(modifier = Modifier.fillMaxSize()) {
-                when (activeView) {
-                    "overview" -> OverviewModule(viewModel, onNavigateTo = { activeView = it })
-                    "cases" -> CasesModule(viewModel, onNavigateToEvidence = { activeView = "evidence" })
-                    "evidence" -> EvidenceModule(viewModel)
-                    "graph" -> EntityGraphModule(viewModel)
-                    "ai" -> AiAssistantModule(viewModel)
-                    "reports" -> ReportsModule(viewModel)
-                    "services" -> ServicesModule()
-                    "training" -> TrainingModule()
-                    "contact" -> ContactModule()
-                    "settings" -> SettingsModule()
-                    else -> OverviewModule(viewModel, onNavigateTo = { activeView = it })
+                Button(
+                    onClick = onLogout,
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                    modifier = Modifier.height(48.dp)
+                ) {
+                    Icon(Icons.Default.Logout, contentDescription = null, modifier = Modifier.size(15.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Sign Out", fontWeight = FontWeight.Bold, fontSize = 12.sp)
                 }
             }
         }

@@ -3,10 +3,13 @@ package com.example.acpia
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
@@ -58,21 +61,27 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
     var key by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
 
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val isMobile = configuration.screenWidthDp < 600
+
+    val scrollState = androidx.compose.foundation.rememberScrollState()
+
     Row(modifier = Modifier.fillMaxSize()) {
         // Left Side: Login Form
         Column(
             modifier = Modifier
-                .weight(1.05f)
+                .weight(if (isMobile) 1f else 1.05f)
                 .fillMaxHeight()
                 .background(Color.White.copy(alpha = 0.9f))
-                .padding(48.dp),
+                .verticalScroll(scrollState)
+                .padding(if (isMobile) 24.dp else 48.dp),
             verticalArrangement = Arrangement.Center
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 24.dp)) {
                 Surface(
                     color = MaterialTheme.colorScheme.primaryContainer,
                     shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier.size(56.dp)
+                    modifier = Modifier.size(if (isMobile) 48.dp else 56.dp)
                 ) {
                     Icon(
                         Icons.Default.Security,
@@ -83,15 +92,15 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                 }
                 Spacer(modifier = Modifier.width(16.dp))
                 Column {
-                    Text("Kerala Cyber Police", fontWeight = FontWeight.ExtraBold, fontSize = 20.sp)
-                    Text("Secure Investigation Portal", fontFamily = FontFamily.Monospace, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Kerala Cyber Police", fontWeight = FontWeight.ExtraBold, fontSize = if (isMobile) 18.sp else 20.sp)
+                    Text("Secure Portal", fontFamily = FontFamily.Monospace, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
 
-            Text("Login to ACPIA", fontWeight = FontWeight.ExtraBold, fontSize = 32.sp)
+            Text("Login to ACPIA", fontWeight = FontWeight.ExtraBold, fontSize = if (isMobile) 26.sp else 32.sp)
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                "Access evidence workflows, case intelligence, and sealed audit trails with a friendly public-safety experience.",
+                "Access evidence workflows, case intelligence, and sealed audit trails.",
                 fontSize = 14.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -127,7 +136,7 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                     if (email.isNotBlank() && key.isNotBlank()) {
                         onLoginSuccess()
                     } else {
-                        error = "Enter your assigned credentials to continue."
+                        error = "Enter assigned credentials."
                     }
                 },
                 modifier = Modifier.fillMaxWidth().height(52.dp),
@@ -140,53 +149,66 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Sign in", fontWeight = FontWeight.Bold)
             }
+
+            if (isMobile) {
+                Spacer(modifier = Modifier.height(32.dp))
+                RequirementsPanel(isMobile = true)
+            }
         }
 
-        // Right Side: Background/Requirements
-        Box(
-            modifier = Modifier
-                .weight(0.95f)
-                .fillMaxHeight()
-                .background(
-                    Brush.linearGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                            Color(0xFF24B8B0).copy(alpha = 0.08f)
+        // Right Side: Background/Requirements (Desktop only)
+        if (!isMobile) {
+            Box(
+                modifier = Modifier
+                    .weight(0.95f)
+                    .fillMaxHeight()
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                Color(0xFF24B8B0).copy(alpha = 0.08f)
+                            )
                         )
                     )
-                )
-                .padding(48.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Surface(
-                color = Color.White.copy(alpha = 0.95f),
-                shape = RoundedCornerShape(18.dp),
-                modifier = Modifier.fillMaxWidth(),
-                shadowElevation = 8.dp
+                    .padding(48.dp),
+                contentAlignment = Alignment.Center
             ) {
-                Column(modifier = Modifier.padding(24.dp)) {
-                    Text("Case Requirement Background", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        "This investigation workflow is designed for lawful digital evidence review, secure evidence handling, and transparent decision reporting.",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        lineHeight = 18.sp
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    listOf(
-                        "Preserve chain of custody.",
-                        "Protect victim identity.",
-                        "Generate court-ready audit trails.",
-                        "Cross-reference suspicious entities."
-                    ).forEach { req ->
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 4.dp)) {
-                            Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color(0xFF25B07B))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(req, fontSize = 12.sp)
-                        }
-                    }
+                RequirementsPanel(isMobile = false)
+            }
+        }
+    }
+}
+
+@Composable
+fun RequirementsPanel(isMobile: Boolean) {
+    Surface(
+        color = Color.White.copy(alpha = 0.95f),
+        shape = RoundedCornerShape(18.dp),
+        modifier = Modifier.fillMaxWidth(),
+        shadowElevation = if (isMobile) 0.dp else 8.dp,
+        border = if (isMobile) BorderStroke(1.dp, MaterialTheme.colorScheme.outline) else null
+    ) {
+        Column(modifier = Modifier.padding(if (isMobile) 16.dp else 24.dp)) {
+            Text("Case Requirement Background", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                "This investigation workflow is designed for lawful digital evidence review and secure evidence handling.",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                lineHeight = 18.sp
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            listOf(
+                "Preserve chain of custody.",
+                "Protect victim identity.",
+                "Generate audit trails.",
+                "Cross-reference entities."
+            ).forEach { req ->
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 4.dp)) {
+                    Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color(0xFF25B07B))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(req, fontSize = 12.sp)
                 }
             }
         }

@@ -1,5 +1,6 @@
 package com.example.acpia.ui.modules
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -9,10 +10,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -21,6 +24,7 @@ import androidx.compose.ui.window.Dialog
 import com.example.acpia.model.*
 import com.example.acpia.viewmodel.InvestigationViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CasesModule(
     viewModel: InvestigationViewModel,
@@ -30,6 +34,10 @@ fun CasesModule(
     val selectedCase by viewModel.selectedCase.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val statusFilter by viewModel.statusFilter.collectAsState()
+
+    val configuration = LocalConfiguration.current
+    val isMobile = configuration.screenWidthDp < 600
+    var showDetailOnMobile by remember { mutableStateOf(false) }
 
     var showNewCaseDialog by remember { mutableStateOf(false) }
 
@@ -49,259 +57,161 @@ fun CasesModule(
         matchesFilter && matchesSearch
     }
 
-    Row(modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        // Left Column: Case Directory & Filters
-        Surface(
-            color = Color.White,
-            shape = RoundedCornerShape(18.dp),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-            modifier = Modifier.weight(1.1f).fillMaxHeight()
-        ) {
-            Column(modifier = Modifier.padding(18.dp)) {
-                // Header & Add Case Button
-                Row(
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column {
-                        Text("Investigation Files", fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
-                        Text("${filteredCases.size} cases match filter", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    Button(
-                        onClick = { showNewCaseDialog = true },
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Register FIR", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                // Filter Chips
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf(
-                        "ALL" to "All",
-                        "ACTIVE" to "Active",
-                        "ESCALATED" to "Escalated",
-                        "CLOSED" to "Closed"
-                    ).forEach { (key, label) ->
-                        val isSelected = statusFilter == key
-                        FilterChip(
-                            selected = isSelected,
-                            onClick = { viewModel.setStatusFilter(key) },
-                            label = { Text(label, fontSize = 11.sp) }
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Case List
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    items(filteredCases) { caseItem ->
-                        val isSelected = caseItem.id == selectedCase?.id
-                        Surface(
-                            color = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f) else MaterialTheme.colorScheme.surfaceVariant,
-                            shape = RoundedCornerShape(12.dp),
-                            border = BorderStroke(
-                                1.dp,
-                                if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
-                            ),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { viewModel.selectCase(caseItem.id) }
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Row(
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Text(
-                                        caseItem.id,
-                                        fontSize = 11.sp,
-                                        fontFamily = FontFamily.Monospace,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                    Surface(
-                                        color = Color(caseItem.priority.colorHex).copy(alpha = 0.15f),
-                                        shape = RoundedCornerShape(6.dp)
-                                    ) {
-                                        Text(
-                                            caseItem.priority.label,
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color(caseItem.priority.colorHex),
-                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                        )
-                                    }
-                                }
-                                Text(
-                                    caseItem.title,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(vertical = 4.dp)
-                                )
-                                Text(
-                                    caseItem.firNumber,
-                                    fontSize = 11.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Row(
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Text("Stage: ${caseItem.stage.label}", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    Text(caseItem.status, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (caseItem.status == "Closed") Color(0xFF25B07B) else MaterialTheme.colorScheme.primary)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+    if (isMobile && showDetailOnMobile && selectedCase != null) {
+        BackHandler {
+            showDetailOnMobile = false
         }
-
-        // Right Column: Active Case Inspector & Stage Stepper
         Surface(
-            color = Color.White,
-            shape = RoundedCornerShape(18.dp),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-            modifier = Modifier.weight(1.4f).fillMaxHeight()
+            color = MaterialTheme.colorScheme.background,
+            modifier = Modifier.fillMaxSize()
         ) {
-            selectedCase?.let { c ->
-                val scroll = rememberScrollState()
-                Column(modifier = Modifier.padding(20.dp).verticalScroll(scroll)) {
+            CaseInspector(
+                c = selectedCase!!,
+                viewModel = viewModel,
+                onNavigateToEvidence = onNavigateToEvidence,
+                isMobile = true,
+                onBack = { showDetailOnMobile = false }
+            )
+        }
+    } else {
+        Row(modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            // Left Column: Case Directory & Filters
+            Surface(
+                color = Color.White,
+                shape = RoundedCornerShape(18.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                modifier = Modifier.weight(1.1f).fillMaxHeight()
+            ) {
+                Column(modifier = Modifier.padding(if (isMobile) 12.dp else 18.dp)) {
+                    // Header & Add Case Button
                     Row(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column {
-                            Text(c.firNumber, fontSize = 12.sp, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text(c.title, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 4.dp))
+                            Text("Investigation Files", fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
+                            Text("${filteredCases.size} cases", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        Surface(
-                            color = MaterialTheme.colorScheme.surfaceVariant,
-                            shape = CircleShape,
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+                        Button(
+                            onClick = { showNewCaseDialog = true },
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                            contentPadding = PaddingValues(horizontal = if (isMobile) 8.dp else 16.dp)
                         ) {
-                            Text(
-                                "Status: ${c.status}",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                            if (!isMobile) {
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Register FIR", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Filter Chips
+                    Row(
+                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf(
+                            "ALL" to "All",
+                            "ACTIVE" to "Active",
+                            "ESCALATED" to "Escalated",
+                            "CLOSED" to "Closed"
+                        ).forEach { (key, label) ->
+                            val isSelected = statusFilter == key
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = { viewModel.setStatusFilter(key) },
+                                label = { Text(label, fontSize = 11.sp) }
                             )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                    // Investigation Stage Progression Stepper
-                    Text("INVESTIGATION LIFECYCLE STAGE", fontSize = 11.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Surface(
-                        color = MaterialTheme.colorScheme.surfaceVariant,
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth()
+                    // Case List
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Column(modifier = Modifier.padding(14.dp)) {
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                CaseStage.values().forEachIndexed { index, stage ->
-                                    val isCurrent = c.stage == stage
-                                    val isPassed = c.stage.ordinal >= stage.ordinal
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(24.dp)
-                                                .background(
-                                                    if (isPassed) MaterialTheme.colorScheme.primary else Color.LightGray.copy(alpha = 0.5f),
-                                                    CircleShape
-                                                ),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text("${index + 1}", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        items(filteredCases) { caseItem ->
+                            val isSelected = caseItem.id == selectedCase?.id
+                            Surface(
+                                color = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f) else MaterialTheme.colorScheme.surfaceVariant,
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                                ),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        viewModel.selectCase(caseItem.id)
+                                        if (isMobile) {
+                                            showDetailOnMobile = true
                                         }
-                                        Spacer(modifier = Modifier.height(4.dp))
+                                    }
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Row(
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
                                         Text(
-                                            stage.label.take(10),
-                                            fontSize = 9.sp,
-                                            fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
-                                            color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                            caseItem.id,
+                                            fontSize = 11.sp,
+                                            fontFamily = FontFamily.Monospace,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.primary
                                         )
+                                        Surface(
+                                            color = Color(caseItem.priority.colorHex).copy(alpha = 0.15f),
+                                            shape = RoundedCornerShape(6.dp)
+                                        ) {
+                                            Text(
+                                                caseItem.priority.label,
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color(caseItem.priority.colorHex),
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                            )
+                                        }
                                     }
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(12.dp))
-                            // Stage update actions
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                if (c.stage.ordinal < CaseStage.values().size - 1) {
-                                    val nextStage = CaseStage.values()[c.stage.ordinal + 1]
-                                    Button(
-                                        onClick = { viewModel.updateCaseStage(c.id, nextStage, "Active") },
-                                        shape = RoundedCornerShape(8.dp),
-                                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                                    ) {
-                                        Text("Advance to ${nextStage.label}", fontSize = 11.sp)
-                                    }
-                                }
-                                if (c.status != "Closed") {
-                                    OutlinedButton(
-                                        onClick = { viewModel.updateCaseStage(c.id, c.stage, "Closed") },
-                                        shape = RoundedCornerShape(8.dp)
-                                    ) {
-                                        Text("Close Case", fontSize = 11.sp)
-                                    }
+                                    Text(
+                                        caseItem.title,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(vertical = 4.dp)
+                                    )
+                                    Text(
+                                        caseItem.firNumber,
+                                        fontSize = 11.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                 }
                             }
                         }
                     }
+                }
+            }
 
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Case Details Grid
-                    Text("METADATA & CHAIN OF ASSIGNMENT", fontSize = 11.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        DetailRow("Investigating Officer", c.assignedTo)
-                        DetailRow("Jurisdiction", c.department)
-                        DetailRow("Target Platform", c.platform)
-                        DetailRow("Location Hint", c.locationHint)
-                        DetailRow("Reported Timestamp", c.reportedAt)
-                        DetailRow("Intelligence Matches", "${c.hashMatches} indicators (${c.hashDbStatus})")
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text("CASE NARRATIVE & INVESTIGATION NOTES", fontSize = 11.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(c.notes, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface, lineHeight = 18.sp)
-
-                    Spacer(modifier = Modifier.height(20.dp))
-                    Button(
-                        onClick = onNavigateToEvidence,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-                    ) {
-                        Icon(Icons.Default.Storage, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Open Linked Evidence Vault Items", fontWeight = FontWeight.Bold)
+            // Right Column: Active Case Inspector (Desktop only)
+            if (!isMobile) {
+                Surface(
+                    color = Color.White,
+                    shape = RoundedCornerShape(18.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                    modifier = Modifier.weight(1.4f).fillMaxHeight()
+                ) {
+                    selectedCase?.let { c ->
+                        CaseInspector(c, viewModel, onNavigateToEvidence, isMobile = false, onBack = {})
+                    } ?: Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("Select a case from the directory to view complete details.")
                     }
                 }
-            } ?: Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Select a case from the directory to view complete details.")
             }
         }
     }
@@ -315,6 +225,151 @@ fun CasesModule(
                 showNewCaseDialog = false
             }
         )
+    }
+}
+
+@Composable
+fun CaseInspector(
+    c: Case,
+    viewModel: InvestigationViewModel,
+    onNavigateToEvidence: () -> Unit,
+    isMobile: Boolean,
+    onBack: () -> Unit
+) {
+    val scroll = rememberScrollState()
+    Column(modifier = Modifier.fillMaxSize().padding(if (isMobile) 12.dp else 20.dp).verticalScroll(scroll)) {
+        Row(
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                if (isMobile) {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                    Spacer(modifier = Modifier.width(4.dp))
+                }
+                Column {
+                    Text(c.firNumber, fontSize = 12.sp, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(c.title, fontSize = if (isMobile) 18.sp else 20.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(top = 2.dp))
+                }
+            }
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                shape = CircleShape,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+            ) {
+                Text(
+                    "Status: ${c.status}",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Investigation Stage Progression Stepper
+        Text("INVESTIGATION STAGE", fontSize = 10.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Surface(
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(12.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    CaseStage.values().forEachIndexed { index, stage ->
+                        val isCurrent = c.stage == stage
+                        val isPassed = c.stage.ordinal >= stage.ordinal
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Box(
+                                modifier = Modifier
+                                    .size(22.dp)
+                                    .background(
+                                        if (isPassed) MaterialTheme.colorScheme.primary else Color.LightGray.copy(alpha = 0.5f),
+                                        CircleShape
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("${index + 1}", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                stage.label,
+                                fontSize = 9.sp,
+                                fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                // Stage update actions
+                Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (c.stage.ordinal < CaseStage.values().size - 1) {
+                        val nextStage = CaseStage.values()[c.stage.ordinal + 1]
+                        Button(
+                            onClick = { viewModel.updateCaseStage(c.id, nextStage, "Active") },
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Text("Advance to ${nextStage.label}", fontSize = 10.sp)
+                        }
+                    }
+                    if (c.status != "Closed") {
+                        OutlinedButton(
+                            onClick = { viewModel.updateCaseStage(c.id, c.stage, "Closed") },
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Text("Close Case", fontSize = 10.sp)
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Case Details Grid
+        Text("METADATA & ASSIGNMENT", fontSize = 10.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            DetailRow("Investigating Officer", c.assignedTo)
+            DetailRow("Jurisdiction", c.department)
+            DetailRow("Target Platform", c.platform)
+            DetailRow("Location Hint", c.locationHint)
+            DetailRow("Reported Time", c.reportedAt)
+            DetailRow("Intel Matches", "${c.hashMatches} indicators")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+        Text("INVESTIGATION NOTES", fontSize = 10.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(c.notes, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface, lineHeight = 18.sp)
+
+        Spacer(modifier = Modifier.height(20.dp))
+        Button(
+            onClick = onNavigateToEvidence,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(10.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+        ) {
+            Icon(Icons.Default.Storage, contentDescription = null, modifier = Modifier.size(16.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Open Linked Evidence", fontWeight = FontWeight.Bold)
+        }
     }
 }
 
@@ -333,6 +388,7 @@ fun DetailRow(label: String, value: String) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewCaseDialog(
     onDismiss: () -> Unit,
@@ -352,15 +408,15 @@ fun NewCaseDialog(
             modifier = Modifier.fillMaxWidth(0.95f)
         ) {
             Column(modifier = Modifier.padding(24.dp)) {
-                Text("Register New Investigation File", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
-                Text("Kerala Cyber Operations Intake", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Register FIR / Intake", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+                Text("Kerala Cyber Operations", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
                 Spacer(modifier = Modifier.height(14.dp))
 
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text("Case Title / Incident Name") },
+                    label = { Text("Case Title") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -368,8 +424,7 @@ fun NewCaseDialog(
                 OutlinedTextField(
                     value = fir,
                     onValueChange = { fir = it },
-                    label = { Text("FIR Reference Number & Sections") },
-                    placeholder = { Text("e.g. FIR No. 91/2026 u/s 66C IT Act") },
+                    label = { Text("FIR No. / Sections") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -377,8 +432,7 @@ fun NewCaseDialog(
                 OutlinedTextField(
                     value = platform,
                     onValueChange = { platform = it },
-                    label = { Text("Platform / Attack Vector") },
-                    placeholder = { Text("e.g. Telegram / Phishing Portal / APK") },
+                    label = { Text("Platform") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -386,7 +440,7 @@ fun NewCaseDialog(
                 OutlinedTextField(
                     value = loc,
                     onValueChange = { loc = it },
-                    label = { Text("Incident Location / District") },
+                    label = { Text("Location") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -394,7 +448,7 @@ fun NewCaseDialog(
                 OutlinedTextField(
                     value = notes,
                     onValueChange = { notes = it },
-                    label = { Text("Preliminary Narrative & Summary") },
+                    label = { Text("Narrative Summary") },
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -413,7 +467,7 @@ fun NewCaseDialog(
                         },
                         enabled = title.isNotBlank()
                     ) {
-                        Text("Create Case & Seal")
+                        Text("Seal & Create")
                     }
                 }
             }
