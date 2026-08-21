@@ -1,8 +1,14 @@
-# ACPIA 
+# ACPIA — Kerala Cyber Police Investigation Portal
 
 ![ACPIA Banner](https://img.shields.io/badge/Platform-Android%20%7C%20Jetpack%20Compose-blue?style=for-the-badge)
 ![Security](https://img.shields.io/badge/Security-SHA--256%20Chain--of--Custody-green?style=for-the-badge)
 ![Legal Standard](https://img.shields.io/badge/Compliance-Sec%2065B%20Evidence%20Act-orange?style=for-the-badge)
+
+## 📥 Download APK
+
+[![Download ACPIA](https://img.shields.io/badge/Download-Latest%20APK-1F8ED6?style=for-the-bold&logo=android&logoColor=white)](https://github.com/Muhammedsinanrp/ACPIA-HacKP26/releases/latest)
+
+---
 
 A modern, high-security law-enforcement application built for the **Kerala Police Cyber Operations Wing (Cyberdome)** to streamline digital evidence management, suspect cross-correlation, and court-ready forensic audit logging.
 
@@ -31,11 +37,6 @@ A modern, high-security law-enforcement application built for the **Kerala Polic
 ---
 
 ## 🚀 Getting Started
-
-### Prerequisites
-- Android Studio (Hedgehog or newer)
-- JDK 17
-- Android SDK Platform 34
 
 ### Building & Running
 1. Clone this repository:

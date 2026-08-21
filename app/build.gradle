@@ -21,10 +21,22 @@ android {
         }
     }
 
+    signingConfigs {
+        release {
+            // These would normally be set via environment variables or a local.properties file for security
+            // storeFile file('path/to/keystore.jks')
+            // storePassword '...'
+            // keyAlias '...'
+            // keyPassword '...'
+        }
+    }
+
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            // signingConfig signingConfigs.release
         }
     }
     compileOptions {
