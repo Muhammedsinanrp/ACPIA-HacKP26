@@ -1,4 +1,4 @@
-# ACPIA — Kerala Cyber Police Investigation Portal
+# ACPIA 
 
 ![ACPIA Banner](https://img.shields.io/badge/Platform-Android%20%7C%20Jetpack%20Compose-blue?style=for-the-badge)
 ![Security](https://img.shields.io/badge/Security-SHA--256%20Chain--of--Custody-green?style=for-the-badge)
