@@ -40,7 +40,7 @@ A modern, high-security law-enforcement application built for the **Kerala Polic
 ### Building & Running
 1. Clone this repository:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/ACPICA.git
+   git clone https://github.com/Muhammedsinanrp/ACPIA-HacKP26.git
    ```
 2. Open the project directory in **Android Studio**.
 3. Allow Gradle to sync dependencies.
